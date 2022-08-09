@@ -2,12 +2,13 @@
 """
 # Forming the Prior for the Oralytics RL Algorithm Using ROBAS 2 Data
 ---
-For the Oralytics RL Algorithm, we have the following baseline feature space:
+For the Oralytics RL Algorithm, we have the following state space for the baseline:
 
 1. Time of day
-2. Prior total brushing duration (in the same brushing window during the past 24 hours prior to decision time)
-3. Weekend vs. weekday
-4. Intercept term
+2. $\bar{B}$
+3. $\bar{A}$
+4. Weekend vs. weekday
+5. Intercept term
 
 ## Pulling ROBAS 2 Dataset
 ---
@@ -25,20 +26,33 @@ import arviz as az
 
 df = pd.read_csv('../sim_env_data/robas_2_data.csv')
 alg_features_df = df[['User', 'Time of Day', 'Brush Time', 'Day Type']]
-# num. of baseline featuers
+# num. of baseline featuers minus A bar (which we don't have data on)
 D = 4
-
-alg_features_df
 
 # normalized values derived from ROBAS 2 dataset
 def normalize_total_brush_time(time):
   return (time - 172) / 118
 
+GAMMA = 13/14
+DISCOUNTED_GAMMA_ARRAY = GAMMA ** np.flip(np.arange(14))
+CONSTANT = (1 - GAMMA) / (1 - GAMMA**14)
+
+# brushing duration is of length 14 where the first element is the brushing duration
+# at time t - 14 and the last element the brushing duration at time t - 1
+def calculate_b_bar(brushing_durations):
+  sum_term = DISCOUNTED_GAMMA_ARRAY * brushing_durations
+
+  return CONSTANT * np.sum(sum_term)
+
+# b bar is designed to be in [0, 180]
+def normalize_b_bar(b_bar):
+  return (b_bar - (181 / 2)) / (179 / 2)
+
 # grab user specific df
 def get_user_df(user_id):
   return alg_features_df[alg_features_df['User'] == user_id]
 
-def generate_state_spaces_for_single_user(user_id, rewards):
+def generate_state_spaces_for_single_user(user_id, truncated_rewards):
   ## init ##
   user_df = get_user_df(user_id)
   states = np.zeros(shape=(len(user_df), D))
@@ -47,12 +61,16 @@ def generate_state_spaces_for_single_user(user_id, rewards):
     df_array = np.array(user_df)[i]
     # time of day
     states[i][0] = df_array[1]
-    # prior day brushing quality
-    if i > 1:
-      if states[i][0] == 0:
-        states[i][1] = normalize_total_brush_time(rewards[i - 1] + rewards[i - 2])
-      else:
-        states[i][1] = normalize_total_brush_time(rewards[i - 2] + rewards[i - 3])
+    # b bar
+    if i > 14:
+      b_bar = calculate_b_bar(truncated_rewards[i - 14:i])
+      states[i][1] = normalize_b_bar(b_bar)
+    ### THIS IS THE WAY I HAVE BEEN IMPUTING BUT THIS CAN CHANGE
+    elif i > 0 and i < 14:
+      pseudo_b_bar = np.mean(truncated_rewards[:i])
+      states[i][1] = normalize_b_bar(pseudo_b_bar)
+    else:
+      states[i][1] = normalize_b_bar(0)
     # weekday or weekend term
     states[i][2] = df_array[3]
     # bias term
@@ -71,7 +89,8 @@ total_X = np.empty(shape=(1, D))
 total_Y = np.empty(shape=1)
 for user_id in alg_features_df['User'].unique():
   rewards = np.array(alg_features_df.loc[alg_features_df['User'] == user_id]['Brush Time'])
-  states = generate_state_spaces_for_single_user(user_id, rewards)
+  truncated_rewards = np.array([min(x, 180) for x in rewards])
+  states = generate_state_spaces_for_single_user(user_id, truncated_rewards)
   total_X = np.concatenate((total_X, states), axis=0)
   total_Y = np.concatenate((total_Y, rewards), axis=None)
   users_sessions[user_id] = [states, rewards]
@@ -101,9 +120,9 @@ for user in users_sessions.keys():
 
   sigma_n_squared_s.append(np.var(user_residuals))
 
-print("sigma_squared", np.mean(sigma_n_squared_s))
+print(np.mean(sigma_n_squared_s))
 
-"""## Fitting $\mu_{\alpha_0}, \Sigma_{\alpha_0}$
+"""## Fitting $\mu_0, \Sigma_0$
 ---
 We fit our prior parameters in accordance to the procedure in [[Liao et. al., 2015]](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8439432/#R23) Section 6.3.
 1. We use GEE regression anaylsis to fit a model per user to identify significance of each feature.
@@ -141,10 +160,10 @@ w = np.linalg.inv(total_X.T @ total_X) @ total_X.T @ total_Y
 
 """This is the cut off value. If the test statistic (calculated above) is greater than the cut off value, then the feature is significiant.
 
-Cut Off Value = $|\text{inverse CDF} (\text{significance} / 2, \text{num. of users})|$
+Cut Off Value = $|inverse CDF (significance / 2, num. of users)|$
 """
 
-print("Significance Cut Off Value:", abs(scipy.stats.t.ppf(0.05 / 2, 32)))
+abs(scipy.stats.t.ppf(0.05 / 2, 32))
 
 """### Step 2. """
 
