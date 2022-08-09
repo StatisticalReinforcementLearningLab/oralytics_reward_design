@@ -257,6 +257,15 @@ class SimulationEnvironment():
     def get_users(self):
         return self.users_list
 
+    def update_disengagement(self, user_idx, num_actions_in_past_3_days):
+        self.all_user_envs[user_idx].update_disengagement(num_actions_in_past_3_days)
+
+    def update_responsiveness(self, user_idx, num_actions_in_past_3_days, user_brushed_well):
+        self.all_user_envs[user_idx].update_responsiveness(num_actions_in_past_3_days, user_brushed_well)
+
+    def get_is_disengaged(self, user_idx):
+        return self.all_user_envs[user_idx].get_is_disengaged()
+
 ### SIMULATION ENV AXIS VALUES ###
 # These are the values you can tweak for the variants of the simulation environment
 DISENGAGEMENT_PROB_VALS = [0.25, 0.5, 0.75]

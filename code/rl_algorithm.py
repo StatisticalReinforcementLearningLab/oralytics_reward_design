@@ -26,6 +26,10 @@ A_2 = 0.8
 DISCOUNTED_GAMMA_ARRAY = GAMMA ** np.flip(np.arange(14))
 CONSTANT = (1 - GAMMA) / (1 - GAMMA**14)
 
+# b bar is designed to be in [0, 180]
+def normalize_b_bar(b_bar):
+  return (b_bar - (181 / 2)) / (179 / 2)
+
 # brushing duration is of length 14 where the first element is the brushing duration
 # at time t - 14 and the last element the brushing duration at time t - 1
 def calculate_b_bar(brushing_durations):
@@ -38,25 +42,25 @@ def calculate_a_bar(past_actions):
 
   return CONSTANT * np.sum(sum_term)
 
-def calculate_b_condition(brushing_durations):
-  return calculate_b_bar(brushing_durations) > B
+def calculate_b_condition(b_bar):
+  return b_bar > B
 
-def calculate_a1_condition(past_actions):
-  return calculate_a_bar(past_actions) > A_1
+def calculate_a1_condition(a_bar):
+  return a_bar > A_1
 
-def calculate_a2_condition(past_actions):
-  return calculate_a_bar(past_actions) > A_2
+def calculate_a2_condition(a_bar):
+  return a_bar > A_2
 
 def cost_definition(xi_1, xi_2, action, B_condition, A1_condition, A2_condition):
   return action * (xi_1 * B_condition * A1_condition + xi_2 * A2_condition)
 
 # returns the reward where the cost term is parameterized by xi_1, xi_2
-def reward_definition(brushing_duration, pressure_duration, xi_1, xi_2, current_action,\
-                      brushing_durations, past_actions):
-  B_condition = calculate_b_condition(brushing_durations)
-  A1_condition = calculate_a1_condition(past_actions)
-  A2_condition = calculate_a2_condition(past_actions)
-  Q = min(brushing_duration, 180) - pressure_duration
+def reward_definition(brushing_quality, xi_1, xi_2, current_action,\
+                      b_bar, a_bar):
+  B_condition = calculate_b_condition(b_bar)
+  A1_condition = calculate_a1_condition(a_bar)
+  A2_condition = calculate_a2_condition(a_bar)
+  Q = min(brushing_quality, 180)
   C = cost_definition(xi_1, xi_2, current_action, B_condition, A1_condition, A2_condition)
 
   return Q - C
@@ -76,24 +80,21 @@ def sigmoid(x):
 # 1 - b bar
 # 2 - a bar
 # 3 - bias
-def process_alg_state(env_state, past_brushing, past_actions):
-    baseline_state = np.array([env_state[0], calculate_b_bar(past_brushing), \
-                               calculate_a_bar(past_actions), env_state[4], 1])
+def process_alg_state(env_state, b_bar, a_bar):
+    baseline_state = np.array([env_state[0], normalize_b_bar(b_bar), \
+                               calculate_a_bar(a_bar), env_state[4], 1])
     advantage_state = np.delete(baseline_state, 3)
 
     return advantage_state, baseline_state
-
-GAMMA = 13/14
-np.sum(((1 - GAMMA) / (1 - GAMMA**14)) * (GAMMA ** np.flip(np.arange(14))) * np.ones(14))
 
 class RLAlgorithmCandidate():
     def __init__(self, cost_params, update_cadence):
         self.update_cadence = update_cadence
         # xi_1, xi_2 params for the cost term parameterizes the reward def. func.
-        self.reward_def_func = lambda brushing_duration, pressure_duration, current_action, brushing_durations, past_actions: \
-                      reward_definition(brushing_duration, pressure_duration, \
+        self.reward_def_func = lambda brushing_quality, current_action, b_bar, a_bar: \
+                      reward_definition(brushing_quality, \
                                         cost_params[0], cost_params[1], \
-                                        current_action, brushing_durations, past_actions)
+                                        current_action, b_bar, a_bar)
         # process_alg_state is a global function
         self.process_alg_state_func = process_alg_state
 
