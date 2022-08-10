@@ -35,24 +35,12 @@ def main(_argv):
 
     ## HANDLING SIMULATION ENVIRONMENT ##
     env_type = FLAGS.sim_env_type
-    if env_type == 'D_LOW_U_LOW':
-        environment_module = D_LOW_U_LOW(USERS_LIST)
-    elif env_type == 'D_LOW_U_MED':
-        environment_module = D_LOW_U_MED(USERS_LIST)
-    elif env_type == 'D_LOW_U_HIGH':
-        environment_module = D_LOW_U_HIGH(USERS_LIST)
-    elif env_type == 'D_MED_U_LOW':
-        environment_module = D_MED_U_LOW(USERS_LIST)
-    elif env_type == 'D_MED_U_MED':
-        environment_module = D_MED_U_MED(USERS_LIST)
-    elif env_type == 'D_MED_U_HIGH':
-        environment_module = D_MED_U_HIGH(USERS_LIST)
-    elif env_type == 'D_HIGH_U_LOW':
-        environment_module = D_HIGH_U_LOW(USERS_LIST)
-    elif env_type == 'D_HIGH_U_MED':
-        environment_module = D_HIGH_U_MED(USERS_LIST)
-    elif env_type == 'D_HIGH_U_HIGH':
-        environment_module = D_HIGH_U_HIGH(USERS_LIST)
+    if env_type == 'U_LOW':
+        environment_module = U_LOW(USERS_LIST)
+    elif env_type == 'U_MED':
+        environment_module = U_MED(USERS_LIST)
+    elif env_type == 'U_HIGH':
+        environment_module = U_HIGH(USERS_LIST)
     else:
         print("ERROR: NO ENV_TYPE FOUND - ", env_type)
 

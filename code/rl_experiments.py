@@ -78,10 +78,9 @@ def run_incremental_recruitment_exp(user_groups, alg_candidate, sim_env):
                 result[user_idx][1]["costs"] = \
                 np.append(result[user_idx][1]["costs"], min(quality, 180) - reward)
                 total_results["rewards"] = np.append(total_results["rewards"], reward)
-                ## UPDATE DISENGAGEMENT AND UNRESPONSIVENESS ##
+                ## UPDATE UNRESPONSIVENESS ##
                 # only after first week
                 if j >= 14:
-                    sim_env.update_disengagement(user_idx, np.sum(result[user_idx][1]["actions"][j - 6:j]))
                     sim_env.update_responsiveness(user_idx, np.sum(result[user_idx][1]["actions"][j - 6:j]), calculate_b_condition(b_bar))
 
         # update time at the end of each week

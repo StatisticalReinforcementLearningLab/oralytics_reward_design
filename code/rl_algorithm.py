@@ -20,7 +20,7 @@ NUM_POSTERIOR_SAMPLES = 5000
 
 ### Reward Definition ###
 GAMMA = 13/14
-B = 110
+B = 111
 A_1 = 0.5
 A_2 = 0.8
 DISCOUNTED_GAMMA_ARRAY = GAMMA ** np.flip(np.arange(14))

@@ -175,20 +175,15 @@ non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: np
 """
 
 ### These values are chosen by domain experts
-DISENGAGE_THRESHOLD = 4
 UNRESPONSIVE_THRESHOLD = 3
 
 class UserEnvironment():
-    def __init__(self, user_id, disengagement_prob, unresponsive_val):
+    def __init__(self, user_id, unresponsive_val):
         # vector: size (T, D) where D = 6 is the dimension of the env. state
         # T is the length of the study
         self.user_states = USERS_SESSIONS_NON_STAT[user_id]
         # tuple: float values of effect size on bernoulli, poisson components
         self.user_effect_sizes = np.array([ZERO_INFL_BERN_EFFECT_SIZE[user_id], ZERO_INFL_POISSON_EFFECT_SIZES[user_id]])
-        # float: probability between [0, 1]
-        self.disengagement_prob = disengagement_prob
-        # boolean
-        self.is_disengaged = False
         # float: unresponsive scaling value
         self.unresponsive_val = unresponsive_val
         # reward generating function
@@ -199,14 +194,7 @@ class UserEnvironment():
                                           effect_func_poisson=lambda state: non_stat_user_spec_effect_func_zero_infl_poisson(state, self.user_effect_sizes[1]))
 
     def generate_reward(self, state, action):
-        if self.is_disengaged:
-          return 0
-        else:
           return self.reward_generating_func(state, action)
-
-    def update_disengagement(self, num_actions_in_past_3_days):
-        if num_actions_in_past_3_days > DISENGAGE_THRESHOLD:
-            self.is_disengaged = bernoulli.rvs(self.disengagement_prob)
 
     def update_responsiveness(self, num_actions_in_past_3_days, user_brushed_well):
         if num_actions_in_past_3_days > UNRESPONSIVE_THRESHOLD and user_brushed_well:
@@ -218,33 +206,20 @@ class UserEnvironment():
     def get_user_effect_sizes(self):
         return self.user_effect_sizes
 
-    def get_is_disengaged(self):
-        return self.is_disengaged
-
-BETWEEN_USER_SD = 1/2 * (zero_infl_bern_std + zero_infl_poisson_std)
-
-### SIMULATE DELAYED EFFECTS ###
-def sample_disengagement_prob(mu):
-    a = ((1 - mu)/BETWEEN_USER_SD**2 - 1/mu) * mu**2
-    b = a * (1/mu - 1)
-
-    return np.random.beta(a, b)
-
-def create_user_envs(users_list, population_disengagement_prob, unresponsive_val):
+def create_user_envs(users_list, unresponsive_val):
     all_user_envs = {}
     for i, user in enumerate(users_list):
-      disengagement_prob = sample_disengagement_prob(population_disengagement_prob)
-      new_user = UserEnvironment(user_id, disengagement_prob, unresponsive_val)
+      new_user = UserEnvironment(user_id, unresponsive_val)
       all_user_envs[i] = new_user
 
     return all_user_envs
 
 class SimulationEnvironment():
-    def __init__(self, users_list, population_disengagement_prob, unresponsive_val):
+    def __init__(self, users_list, unresponsive_val):
         # Func
         self.process_env_state = non_stat_process_env_state
         # Dict: key: String user_id, val: user environment object
-        self.all_user_envs = create_user_envs(users_list, population_disengagement_prob, unresponsive_val)
+        self.all_user_envs = create_user_envs(users_list, unresponsive_val)
         # List: users in the environment (can repeat)
         self.users_list = users_list
 
@@ -257,26 +232,13 @@ class SimulationEnvironment():
     def get_users(self):
         return self.users_list
 
-    def update_disengagement(self, user_idx, num_actions_in_past_3_days):
-        self.all_user_envs[user_idx].update_disengagement(num_actions_in_past_3_days)
-
     def update_responsiveness(self, user_idx, num_actions_in_past_3_days, user_brushed_well):
         self.all_user_envs[user_idx].update_responsiveness(num_actions_in_past_3_days, user_brushed_well)
 
-    def get_is_disengaged(self, user_idx):
-        return self.all_user_envs[user_idx].get_is_disengaged()
-
 ### SIMULATION ENV AXIS VALUES ###
 # These are the values you can tweak for the variants of the simulation environment
-DISENGAGEMENT_PROB_VALS = [0.25, 0.5, 0.75]
 UNRESPONSIVE_SCALING_VALS = [0, 0.25, 0.5]
 
-D_LOW_U_LOW = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[0], UNRESPONSIVE_SCALING_VALS[0])
-D_LOW_U_MED = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[0], UNRESPONSIVE_SCALING_VALS[1])
-D_LOW_U_HIGH = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[0], UNRESPONSIVE_SCALING_VALS[2])
-D_MED_U_LOW = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[1], UNRESPONSIVE_SCALING_VALS[0])
-D_MED_U_MED = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[1], UNRESPONSIVE_SCALING_VALS[1])
-D_MED_U_HIGH = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[1], UNRESPONSIVE_SCALING_VALS[2])
-D_HIGH_U_LOW = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[2], UNRESPONSIVE_SCALING_VALS[0])
-D_HIGH_U_MED = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[2], UNRESPONSIVE_SCALING_VALS[1])
-D_HIGH_U_HIGH = lambda users_list: SimulationEnvironment(users_list, DISENGAGEMENT_PROB_VALS[2], UNRESPONSIVE_SCALING_VALS[2])
+U_LOW = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[0])
+U_MED = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[1])
+U_HIGH = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[2])

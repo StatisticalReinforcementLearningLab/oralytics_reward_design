@@ -184,3 +184,8 @@ print("mu_{alpha}: ",[0, mus[1], 0, mus[3]])
 
 ### sigma_{\beta} ###
 print("sigma_{beta}: ", np.mean([sds[0] / 2, sds[1], sds[2] / 2, sds[3]]))
+
+"""## Informing Design Of Reward. """
+### upper 95th percentile of user brushing informed from ROBAS 2
+total_truncated_brush_times = np.array([min(x, 120) for x in alg_features_df['Brush Time']])
+print("Upper 50th Percentile Brushing Duration: ", np.percentile(total_truncated_brush_times, 50))
