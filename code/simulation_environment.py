@@ -180,7 +180,7 @@ non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: ab
 UNRESPONSIVE_THRESHOLD = 3
 
 class UserEnvironment():
-    def __init__(self, user_id, unresponsive_val):
+    def __init__(self, user_id, unresponsive_val, unresponsive_prob):
         # vector: size (T, D) where D = 6 is the dimension of the env. state
         # T is the length of the study
         self.user_states = USERS_SESSIONS_NON_STAT[user_id]
@@ -188,6 +188,10 @@ class UserEnvironment():
         self.user_effect_sizes = np.array([ZERO_INFL_BERN_EFFECT_SIZE[user_id], ZERO_INFL_POISSON_EFFECT_SIZES[user_id]])
         # float: unresponsive scaling value
         self.unresponsive_val = unresponsive_val
+        # probability of becoming unresponsive
+        self.unresponsive_prob = unresponsive_prob
+        # boolean: we only want to penalize the user's effect size once per study
+        self.responsive = True
         # reward generating function
         self.reward_generating_func = lambda state, action: construct_zero_infl_pois_model_and_sample(user_id, state, action, \
                                           get_zero_infl_params_for_user(user_id)[0], \
@@ -199,8 +203,11 @@ class UserEnvironment():
           return self.reward_generating_func(state, action)
 
     def update_responsiveness(self, a1_cond, a2_cond, b_cond):
-        if ((b_cond and a1_cond) or a2_cond):
-            self.user_effect_sizes = self.user_effect_sizes * self.unresponsive_val
+        if self.responsive and ((b_cond and a1_cond) or a2_cond):
+            # draw
+            self.responsive = 1 - bernoulli.rvs(self.unresponsive_prob)
+            if self.responsive == False:
+                self.user_effect_sizes = self.user_effect_sizes * self.unresponsive_val
 
     def get_states(self):
         return self.user_states
@@ -208,20 +215,30 @@ class UserEnvironment():
     def get_user_effect_sizes(self):
         return self.user_effect_sizes
 
-def create_user_envs(users_list, unresponsive_val):
+BETWEEN_USER_SD = 1/2 * (zero_infl_bern_std + zero_infl_poisson_std)
+
+### SIMULATE DELAYED EFFECTS ###
+def sample_unresponsive_prob(mu):
+    a = ((1 - mu)/BETWEEN_USER_SD**2 - 1/mu) * mu**2
+    b = a * (1/mu - 1)
+
+    return np.random.beta(a, b)
+
+def create_user_envs(users_list, unresponsive_val, population_unresponsive_prob):
     all_user_envs = {}
     for i, user in enumerate(users_list):
-      new_user = UserEnvironment(user_id, unresponsive_val)
+      unresponsive_prob = sample_unresponsive_prob(population_unresponsive_prob)
+      new_user = UserEnvironment(user_id, unresponsive_val, unresponsive_prob)
       all_user_envs[i] = new_user
 
     return all_user_envs
 
 class SimulationEnvironment():
-    def __init__(self, users_list, unresponsive_val):
+    def __init__(self, users_list, unresponsive_val, population_unresponsive_prob):
         # Func
         self.process_env_state = non_stat_process_env_state
         # Dict: key: String user_id, val: user environment object
-        self.all_user_envs = create_user_envs(users_list, unresponsive_val)
+        self.all_user_envs = create_user_envs(users_list, unresponsive_val, population_unresponsive_prob)
         # List: users in the environment (can repeat)
         self.users_list = users_list
 
@@ -241,6 +258,6 @@ class SimulationEnvironment():
 # These are the values you can tweak for the variants of the simulation environment
 RESPONSIVITY_SCALING_VALS = [0, 0.25, 0.5]
 
-LOW_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[0])
-MED_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[1])
-HIGH_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[2])
+LOW_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[0], 0.5)
+MED_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[1], 0.5)
+HIGH_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[2], 0.5)
