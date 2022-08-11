@@ -109,7 +109,6 @@ def construct_zero_infl_pois_model_and_sample(user, state, action, \
   if (action == 1):
     bern_linear_comp += effect_func_bern(state)
   bern_p = 1 - sigmoid(bern_linear_comp)
-  # bernoulli component
   rv = bernoulli.rvs(bern_p)
   if (rv):
     # poisson component
@@ -140,7 +139,7 @@ poisson_param_titles = ['Time.of.Day.Poisson', \
                      'Day.Type.Poisson']
 
 # effect size mean
-zero_infl_bern_mean = -1.0 * np.mean(np.mean(np.abs(np.array([ROBAS_3_PARAMS_DF[title] for title in bern_param_titles])), axis=1))
+zero_infl_bern_mean = np.mean(np.mean(np.abs(np.array([ROBAS_3_PARAMS_DF[title] for title in bern_param_titles])), axis=1))
 zero_infl_poisson_mean = np.mean(np.mean(np.abs(np.array([ROBAS_3_PARAMS_DF[title] for title in poisson_param_titles])), axis=1))
 
 # effect size std
@@ -159,16 +158,19 @@ for i, user_id in enumerate(USERS_SESSIONS_NON_STAT.keys()):
   ZERO_INFL_BERN_EFFECT_SIZE[user_id] = user_zero_infl_bern_effect_sizes[i]
   ZERO_INFL_POISSON_EFFECT_SIZES[user_id] = user_zero_infl_poisson_effect_sizes[i]
 
-ZERO_INFL_BERN_EFFECT_SIZE
+print(ZERO_INFL_BERN_EFFECT_SIZE)
 
-ZERO_INFL_POISSON_EFFECT_SIZES
+print(ZERO_INFL_POISSON_EFFECT_SIZES)
 
 ## USER-SPECIFIC EFFECT SIZES ##
 # Context-Aware with all features same as baseline features excpet for Prop. Non-Zero Brushing In Past 7 Days
 # which is index 3 for non stat models
 
-non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: np.array(5 * [effect_size]) @ np.delete(state, 3)
-non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: np.array(5 * [effect_size]) @ np.delete(state, 3)
+non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*abs(np.array(5 * [effect_size]) @ np.delete(state, 3))
+non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: abs(np.array(5 * [effect_size]) @ np.delete(state, 3))
+## NON-CONTEXT SPECIFIC ##
+# non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*abs(effect_size)
+# non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: abs(effect_size)
 
 """## Creating Simulation Environment Objects
 ---
