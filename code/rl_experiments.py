@@ -81,7 +81,8 @@ def run_incremental_recruitment_exp(user_groups, alg_candidate, sim_env):
                 ## UPDATE UNRESPONSIVENESS ##
                 # only after first week
                 if j >= 14:
-                    sim_env.update_responsiveness(user_idx, np.sum(result[user_idx][1]["actions"][j - 6:j]), calculate_b_condition(b_bar))
+                    sim_env.update_responsiveness(user_idx, calculate_a1_condition(a_bar),\
+                     calculate_a2_condition(a_bar), calculate_b_condition(b_bar))
 
         # update time at the end of each week
         print("UPDATE TIME.")

@@ -196,8 +196,8 @@ class UserEnvironment():
     def generate_reward(self, state, action):
           return self.reward_generating_func(state, action)
 
-    def update_responsiveness(self, num_actions_in_past_3_days, user_brushed_well):
-        if num_actions_in_past_3_days > UNRESPONSIVE_THRESHOLD and user_brushed_well:
+    def update_responsiveness(self, a1_cond, a2_cond, b_cond):
+        if ((b_cond and a1_cond) or a2_cond):
             self.user_effect_sizes = self.user_effect_sizes * self.unresponsive_val
 
     def get_states(self):
@@ -232,13 +232,13 @@ class SimulationEnvironment():
     def get_users(self):
         return self.users_list
 
-    def update_responsiveness(self, user_idx, num_actions_in_past_3_days, user_brushed_well):
-        self.all_user_envs[user_idx].update_responsiveness(num_actions_in_past_3_days, user_brushed_well)
+    def update_responsiveness(self, user_idx, a1_cond, a2_cond, b_cond):
+        self.all_user_envs[user_idx].update_responsiveness(a1_cond, a2_cond, b_cond)
 
 ### SIMULATION ENV AXIS VALUES ###
 # These are the values you can tweak for the variants of the simulation environment
-UNRESPONSIVE_SCALING_VALS = [0, 0.25, 0.5]
+RESPONSIVITY_SCALING_VALS = [0, 0.25, 0.5]
 
-U_LOW = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[0])
-U_MED = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[1])
-U_HIGH = lambda users_list: SimulationEnvironment(users_list, UNRESPONSIVE_SCALING_VALS[2])
+LOW_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[0])
+MED_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[1])
+HIGH_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[2])

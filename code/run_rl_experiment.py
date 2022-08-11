@@ -41,12 +41,12 @@ def main(_argv):
 
         ## HANDLING SIMULATION ENVIRONMENT ##
         env_type = FLAGS.sim_env_type
-        if env_type == 'U_LOW':
-            environment_module = U_LOW(USERS_LIST)
-        elif env_type == 'U_MED':
-            environment_module = U_MED(USERS_LIST)
-        elif env_type == 'U_HIGH':
-            environment_module = U_HIGH(USERS_LIST)
+        if env_type == 'LOW_R':
+            environment_module = LOW_R(USERS_LIST)
+        elif env_type == 'MED_R':
+            environment_module = MED_R(USERS_LIST)
+        elif env_type == 'HIGH_R':
+            environment_module = HIGH_R(USERS_LIST)
         else:
             print("ERROR: NO ENV_TYPE FOUND - ", env_type)
 
@@ -56,7 +56,7 @@ def main(_argv):
         # Full Pooling with Incremental Recruitment
         results = run_incremental_recruitment_exp(pre_process_users(USERS_LIST), alg_candidate, environment_module)
 
-        pickling_location = '/n/home02/atrella/reward_design/pickle_results/{}_{}_{}_result.p'.format(FLAGS.algorithm_candidate, FLAGS.sim_env_type, current_seed)
+        pickling_location = '../pickle_results/{}_{}_{}_{}_result.p'.format(FLAGS.sim_env_type, cost_params[0], cost_params[1], current_seed)
 
         ## results is a list of tuples where the first element of the tuple is user_id and the second element is a dictionary of values
         print("TRIAL DONE, PICKLING NOW")
