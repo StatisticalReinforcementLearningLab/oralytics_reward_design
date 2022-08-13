@@ -166,32 +166,37 @@ print(ZERO_INFL_POISSON_EFFECT_SIZES)
 # Context-Aware with all features same as baseline features excpet for Prop. Non-Zero Brushing In Past 7 Days
 # which is index 3 for non stat models
 
-non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*abs(np.array(5 * [effect_size]) @ np.delete(state, 3))
-non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: abs(np.array(5 * [effect_size]) @ np.delete(state, 3))
+non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*max(np.array(5 * [effect_size]) @ np.delete(state, 3), 0)
+non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: max(np.array(5 * [effect_size]) @ np.delete(state, 3), 0)
 ## NON-CONTEXT SPECIFIC ##
-# non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*abs(effect_size)
-# non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: abs(effect_size)
+# non_stat_user_spec_effect_func_zero_infl_bern = lambda state, effect_size: -1.0*max(effect_size, 0)
+# non_stat_user_spec_effect_func_zero_infl_poisson = lambda state, effect_size: max(effect_size, 0)
 
 """## Creating Simulation Environment Objects
 ---
 """
 
-### These values are chosen by domain experts
-UNRESPONSIVE_THRESHOLD = 3
+DEBUG_NUM_EFFECT_SHRINKS_1 = 0
+DEBUG_NUM_EFFECT_SHRINKS_2 = 0
+DEBUG_NUM_EFFECT_SHRINKS_3 = 0
 
 class UserEnvironment():
     def __init__(self, user_id, unresponsive_val, unresponsive_prob):
+        self.user_id = user_id
         # vector: size (T, D) where D = 6 is the dimension of the env. state
         # T is the length of the study
         self.user_states = USERS_SESSIONS_NON_STAT[user_id]
         # tuple: float values of effect size on bernoulli, poisson components
+        self.og_user_effect_sizes = np.array([ZERO_INFL_BERN_EFFECT_SIZE[user_id], ZERO_INFL_POISSON_EFFECT_SIZES[user_id]])
         self.user_effect_sizes = np.array([ZERO_INFL_BERN_EFFECT_SIZE[user_id], ZERO_INFL_POISSON_EFFECT_SIZES[user_id]])
         # float: unresponsive scaling value
         self.unresponsive_val = unresponsive_val
         # probability of becoming unresponsive
-        self.unresponsive_prob = unresponsive_prob
-        # boolean: we only want to penalize the user's effect size once per study
-        self.responsive = True
+        # self.unresponsive_prob = unresponsive_prob
+        ### SETTING TO 1 FOR NOW!
+        self.unresponsive_prob = 1.0
+        # you can only shrink at most once a week
+        self.times_shrunk = 0
         # reward generating function
         self.reward_generating_func = lambda state, action: construct_zero_infl_pois_model_and_sample(user_id, state, action, \
                                           get_zero_infl_params_for_user(user_id)[0], \
@@ -200,14 +205,41 @@ class UserEnvironment():
                                           effect_func_poisson=lambda state: non_stat_user_spec_effect_func_zero_infl_poisson(state, self.user_effect_sizes[1]))
 
     def generate_reward(self, state, action):
-          return self.reward_generating_func(state, action)
+        return self.reward_generating_func(state, action)
 
-    def update_responsiveness(self, a1_cond, a2_cond, b_cond):
-        if self.responsive and ((b_cond and a1_cond) or a2_cond):
-            # draw
-            self.responsive = 1 - bernoulli.rvs(self.unresponsive_prob)
-            if self.responsive == False:
-                self.user_effect_sizes = self.user_effect_sizes * self.unresponsive_val
+    def update_responsiveness(self, a1_cond, a2_cond, b_cond, j):
+        # it's been atleast a week since we last shrunk
+        if j % 14 == 0:
+            if (b_cond and a1_cond) or a2_cond:
+                # draw
+                is_unresponsive = bernoulli.rvs(self.unresponsive_prob)
+                if is_unresponsive:
+                    print("SHRINKING EFFECT SIZE!")
+                    global DEBUG_NUM_EFFECT_SHRINKS_1
+                    global DEBUG_NUM_EFFECT_SHRINKS_2
+                    global DEBUG_NUM_EFFECT_SHRINKS_3
+                    if (b_cond and a1_cond) and a2_cond == False:
+                        DEBUG_NUM_EFFECT_SHRINKS_1 += 1
+                    elif a2_cond and ((b_cond and a1_cond) == False):
+                        DEBUG_NUM_EFFECT_SHRINKS_2 += 1
+                    else:
+                        DEBUG_NUM_EFFECT_SHRINKS_3 += 1
+
+                    self.user_effect_sizes = self.user_effect_sizes * self.unresponsive_val
+                    self.times_shrunk += 1
+
+            elif self.times_shrunk > 0:
+                print("EFFECT SIZE GOING BACK UP!")
+                if self.unresponsive_val == 0:
+                    self.user_effect_sizes[0] = self.og_user_effect_sizes[0]
+                    self.user_effect_sizes[1] = self.og_user_effect_sizes[1]
+                else:
+                    self.user_effect_sizes = self.user_effect_sizes / self.unresponsive_val
+                self.times_shrunk -= 1
+            print("Cond 1", DEBUG_NUM_EFFECT_SHRINKS_1)
+            print("Cond 2", DEBUG_NUM_EFFECT_SHRINKS_2)
+            print("Cond Both", DEBUG_NUM_EFFECT_SHRINKS_3)
+
 
     def get_states(self):
         return self.user_states
@@ -228,7 +260,7 @@ def create_user_envs(users_list, unresponsive_val, population_unresponsive_prob)
     all_user_envs = {}
     for i, user in enumerate(users_list):
       unresponsive_prob = sample_unresponsive_prob(population_unresponsive_prob)
-      new_user = UserEnvironment(user_id, unresponsive_val, unresponsive_prob)
+      new_user = UserEnvironment(user, unresponsive_val, unresponsive_prob)
       all_user_envs[i] = new_user
 
     return all_user_envs
@@ -251,12 +283,12 @@ class SimulationEnvironment():
     def get_users(self):
         return self.users_list
 
-    def update_responsiveness(self, user_idx, a1_cond, a2_cond, b_cond):
-        self.all_user_envs[user_idx].update_responsiveness(a1_cond, a2_cond, b_cond)
+    def update_responsiveness(self, user_idx, a1_cond, a2_cond, b_cond, j):
+        self.all_user_envs[user_idx].update_responsiveness(a1_cond, a2_cond, b_cond, j)
 
 ### SIMULATION ENV AXIS VALUES ###
 # These are the values you can tweak for the variants of the simulation environment
-RESPONSIVITY_SCALING_VALS = [0, 0.25, 0.5]
+RESPONSIVITY_SCALING_VALS = [0, 0.5, 0.8]
 
 LOW_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[0], 0.5)
 MED_R = lambda users_list: SimulationEnvironment(users_list, RESPONSIVITY_SCALING_VALS[1], 0.5)

@@ -9,8 +9,10 @@ import numpy as np
 from scipy.stats import bernoulli
 
 ## CLIPPING VALUES ##
-MIN_CLIP_VALUE = 0.35
-MAX_CLIP_VALUE = 0.75
+MIN_CLIP_VALUE = 0.1
+MAX_CLIP_VALUE = 0.9
+#MIN_CLIP_VALUE = 0.35
+#MAX_CLIP_VALUE = 0.75
 # Advantage Time Feature Dimensions
 D_advantage = 4
 # Baseline Time Feature Dimensions
