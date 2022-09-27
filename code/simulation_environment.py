@@ -7,7 +7,7 @@ from scipy.stats import bernoulli
 from scipy.stats import poisson
 
 ROBAS_3_PARAMS_DF = pd.read_csv('../sim_env_data/non_stat_zero_infl_pois_model_params.csv')
-robas_3_data_df = pd.read_csv('../sim_env_data/robas_3_data.csv')
+robas_3_data_df = pd.read_csv("https://raw.githubusercontent.com/ROBAS-UCLA/ROBAS.3/main/data/robas_3_data.csv")
 ROBAS_3_USERS = np.array(ROBAS_3_PARAMS_DF['User'])
 NUM_USERS = len(ROBAS_3_USERS)
 

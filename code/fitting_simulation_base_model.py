@@ -11,7 +11,7 @@ from pymc3.model import Model
 import theano.tensor as tt
 import arviz as az
 
-ROBAS_3_DATA = pd.read_csv("robas_3_data.csv")
+ROBAS_3_DATA = pd.read_csv("https://raw.githubusercontent.com/ROBAS-UCLA/ROBAS.3/main/data/robas_3_data.csv")
 
 ROBAS_3_USERS = np.unique(ROBAS_3_DATA['ROBAS ID'])
 NUM_USERS = len(ROBAS_3_USERS)
@@ -121,8 +121,6 @@ with test_model:
   test_map = pm.find_MAP(start={'w_b': 0.01 * np.ones(6), 'w_p': 0.01 * np.ones(6)})
 
 test_map
-
-pm.model_to_graphviz(test_model)
 
 def run_zero_infl_map_for_users(users_sessions, users_rewards, d, num_restarts):
   model_params = {}

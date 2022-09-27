@@ -24,7 +24,7 @@ from pymc3.model import Model
 import theano.tensor as tt
 import arviz as az
 
-df = pd.read_csv('../sim_env_data/robas_2_data.csv')
+df = pd.read_csv('https://raw.githubusercontent.com/ROBAS-UCLA/ROBAS.2/master/inst/extdata/robas_2_data.csv')
 alg_features_df = df[['User', 'Time of Day', 'Brush Time', 'Day Type']]
 # num. of baseline featuers minus A bar (which we don't have data on)
 D = 4

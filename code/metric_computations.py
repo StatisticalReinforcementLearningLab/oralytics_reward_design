@@ -81,6 +81,3 @@ for SIM_ENV in ENV_NAMES:
         pickle.dump(low_25_grid, f)
     with open(WRITE_PATH_PREFIX + "{}_75_PERC_HEATMAP.p".format(SIM_ENV), 'wb') as f:
         pickle.dump(high_75_grid, f)
-
-    # plot_heatmap(avg_grid.T, "ch:start=.2,rot=-.3", "avg_heatmap_{}".format(SIM_ENV), True)
-    # plot_heatmap(low_25_grid.T, "ch:s=-.2,r=.6", "25_perc_heatmap_{}".format(SIM_ENV), True)
